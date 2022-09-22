@@ -1,0 +1,124 @@
+#cloud-config
+
+users:
+- name: stable-diffusion
+  uid: 2000
+
+write_files:
+  - path: /etc/systemd/system/install-gpu.service
+    permissions: 0644
+    owner: root
+    content: |
+      [Unit]
+      Description=Install GPU drivers
+      Wants=gcr-online.target docker.socket
+      After=gcr-online.target docker.socket
+
+      [Service]
+      User=root
+      Type=oneshot
+      ExecStart=cos-extensions install gpu
+      StandardOutput=journal+console
+      StandardError=journal+console
+  - path: /etc/systemd/system/configure-docker.service
+    permissions: 0644
+    owner: root
+    content: |
+      [Unit]
+      Description=Configure docker
+      Requires=install-gpu.service
+      After=install-gpu.service
+
+      [Service]
+      User=stable-diffusion
+      Type=oneshot
+      ExecStart=docker-credential-gcr configure-docker
+      StandardOutput=journal+console
+      StandardError=journal+console
+  - path: /etc/systemd/system/add-docker-user.service
+    permissions: 0644
+    owner: root
+    content: |
+      [Unit]
+      Description=Configure docker
+      Requires=configure-docker.service
+      After=configure-docker.service
+
+      [Service]
+      User=root
+      Type=oneshot
+      ExecStart=usermod -aG docker stable-diffusion
+      StandardOutput=journal+console
+      StandardError=journal+console
+  - path: /etc/systemd/system/pull-docker-image.service
+    permissions: 0644
+    owner: root
+    content: |
+      [Unit]
+      Description=Pull docker image
+      Requires=add-docker-user.service
+      After=add-docker-user.service
+
+      [Service]
+      User=stable-diffusion
+      Type=oneshot
+      RemainAfterExit=true
+      ExecStart=/usr/bin/docker pull gcr.io/$PROJECT_ID/stable-diffusion-app
+  
+      StandardOutput=journal+console
+      StandardError=journal+console
+  - path: /home/stable-diffusion/verify_cuda_driver.sh
+    permissions: 0644
+    owner: root
+    content: |
+      mount --bind /var/lib/nvidia /var/lib/nvidia
+      mount -o remount,exec /var/lib/nvidia
+      /var/lib/nvidia/bin/nvidia-smi
+  - path: /etc/systemd/system/verify-cuda-driver.service
+    permissions: 0644
+    owner: root
+    content: |
+      [Unit]
+      Description=Verify CUDA driver
+      Requires=pull-docker-image.service
+      After=pull-docker-image.service
+
+      [Service]
+      User=root
+      Type=oneshot
+      RemainAfterExit=true
+      ExecStart=sh /home/stable-diffusion/verify_cuda_driver.sh
+  
+      StandardOutput=journal+console
+      StandardError=journal+console
+  - path: /home/stable-diffusion/start_container.sh
+    permissions: 0644
+    owner: stable-diffusion
+    content: |
+      docker start stable-diffusion || \
+      docker run --name=stable-diffusion --volume /var/lib/nvidia/lib64:/usr/local/nvidia/lib64 --volume /var/lib/nvidia/bin:/usr/local/nvidia/bin --device /dev/nvidia0:/dev/nvidia0 --device /dev/nvidia-uvm:/dev/nvidia-uvm --device /dev/nvidiactl:/dev/nvidiactl -p 80:9000 gcr.io/$PROJECT_ID/stable-diffusion-app:latest
+  - path: /etc/systemd/system/stable-diffusion.service
+    permissions: 0644
+    owner: root
+    content: |
+      [Unit]
+      Description=Run a stable-diffusion GPU application container
+      Requires=verify-cuda-driver.service
+      After=verify-cuda-driver.service
+
+      [Service]
+      User=stable-diffusion
+      Type=oneshot
+      RemainAfterExit=true
+      ExecStart=sh /home/stable-diffusion/start_container.sh 
+  
+      StandardOutput=journal+console
+      StandardError=journal+console
+
+runcmd:
+  - systemctl daemon-reload
+  - systemctl start install-gpu.service
+  - systemctl start configure-docker.service
+  - systemctl start add-docker-user.service
+  - systemctl start pull-docker-image.service
+  - systemctl start stable-diffusion.service
