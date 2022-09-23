@@ -21,8 +21,8 @@ TF_ACTION := plan
 endif
 
 generate-user-data:
-	cp user_data.yaml-template user_data.yaml
-	sed -i 's/$$PROJECT_ID/$(PROJECT_ID)/g' user_data.yaml
+	@cp user_data.yaml-template user_data.yaml
+	@sed -i 's/$$PROJECT_ID/$(PROJECT_ID)/g' user_data.yaml
 
 terraform-init:
 	cd terraform && \
