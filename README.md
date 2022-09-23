@@ -1,7 +1,7 @@
 # Stable Diffusion AI Model on GCP
 
 These infrastructure scripts help me to easily generate powerful enough cloud infrastructure needed by AI 
-to generate pictures based texts I entered.
+to generate pictures based on texts I entered.
 The app being deployed to the infrastructure is https://github.com/cmdr2/stable-diffusion-ui.
 
 ## Choose the data center
