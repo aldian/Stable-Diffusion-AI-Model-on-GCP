@@ -16,10 +16,31 @@ endif
 ifeq ($(GPU_TYPE),)
 GPU_TYPE := nvidia-a100-80gb
 endif
+ifeq ($(TF_ACTION),)
+TF_ACTION := plan
+endif
 
-create-vm:
+generate-user-data:
 	cp user_data.yaml-template user_data.yaml
 	sed -i 's/$$PROJECT_ID/$(PROJECT_ID)/g' user_data.yaml
+
+terraform-init:
+	cd terraform && \
+		terraform init \
+  		-backend-config="bucket=$(GCS_BUCKET)" \
+  		-backend-config="prefix=$(GCS_PATH_PREFIX)"
+
+terraform-action: generate-user-data
+	@cd terraform && \
+		terraform $(TF_ACTION) \
+		-var="app_name=$(APP_NAME)" \
+		-var="gcp_project_id=$(PROJECT_ID)" \
+		-var="gcp_project_number=$(PROJECT_NUMBER)" \
+		-var="gcp_zone=$(ZONE)" \
+		-var="machine_type=$(MACHINE_TYPE)" \
+		-var="gpu_type=$(GPU_TYPE)"
+
+create-vm: generate-user-data
 	gcloud compute instances create $(VM_NAME) \
 		--project=$(PROJECT_ID) \
 		--zone=$(ZONE) \
