@@ -9,6 +9,13 @@ The app being deployed to the infrastructure is https://github.com/cmdr2/stable-
 set environment variable `ZONE` to one of `us-central1-c`, `us-east4-c`, or `europe-west4-a`.
 For example, `export ZONE=us-central1-c`.
 
+## Choose machine type and GPU type
+For example,
+```
+export MACHINE_TYPE=a2-ultragpu-1g
+export GPU_TYPE=nnvidia-a100-80gb
+```
+
 ## Choose the GCP project
 
 set environment variable `PROJECT_ID` and `PROJECT_NUMBER`. You can see the needed values on https://console.cloud.google.com/home/dashboard

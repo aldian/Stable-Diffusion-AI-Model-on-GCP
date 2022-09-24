@@ -17,7 +17,6 @@ RUN apt install -y \
     libsm6 libxext6 \
     libxrender-dev
 
-COPY ./Makefile ./
 COPY ./start.sh ./
 
 EXPOSE 9000
